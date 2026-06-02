@@ -14,10 +14,11 @@ export default async function LineItemsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const { data: items, error } = await supabase
-    .from("line_items")
-    .select("*")
-    .order("name", { ascending: true });
+  const [itemsRes, overridesRes] = await Promise.all([
+    supabase.from("line_items").select("*").order("name", { ascending: true }),
+    supabase.from("monthly_overrides").select("*"),
+  ]);
+  const error = itemsRes.error ?? overridesRes.error;
 
   return (
     <div className="min-h-screen">
@@ -28,7 +29,10 @@ export default async function LineItemsPage() {
             Couldn&apos;t load line items: {error.message}
           </p>
         ) : (
-          <LineItemsManager items={items ?? []} />
+          <LineItemsManager
+            items={itemsRes.data ?? []}
+            overrides={overridesRes.data ?? []}
+          />
         )}
       </main>
     </div>

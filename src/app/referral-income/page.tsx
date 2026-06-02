@@ -37,7 +37,7 @@ export default async function ReferralIncomePage({
   const startDate = monthInputToDate(monthList[0]);
   const endDate = monthInputToDate(monthList[monthList.length - 1]);
 
-  const [itemsRes, ledgerRes] = await Promise.all([
+  const [itemsRes, ledgerRes, overridesRes] = await Promise.all([
     supabase
       .from("line_items")
       .select("*")
@@ -49,11 +49,13 @@ export default async function ReferralIncomePage({
       .eq("category", "referral_revenue")
       .gte("month", startDate)
       .lte("month", endDate),
+    supabase.from("monthly_overrides").select("*"),
   ]);
 
-  const loadError = itemsRes.error ?? ledgerRes.error;
+  const loadError = itemsRes.error ?? ledgerRes.error ?? overridesRes.error;
   const items = (itemsRes.data ?? []) as LineItem[];
   const ledger = (ledgerRes.data ?? []) as MonthlyLedgerRow[];
+  const overrides = overridesRes.data ?? [];
 
   // Aggregate ledger into per-source rows and per-month totals.
   const monthsSet = new Set(monthList);
@@ -235,7 +237,7 @@ export default async function ReferralIncomePage({
 
             {/* Editable sources */}
             <section>
-              <ReferralManager items={items} />
+              <ReferralManager items={items} overrides={overrides} />
             </section>
           </>
         )}

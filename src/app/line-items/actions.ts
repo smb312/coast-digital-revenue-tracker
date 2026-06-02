@@ -76,6 +76,7 @@ function parseForm(formData: FormData):
 
 function revalidate() {
   revalidatePath("/line-items");
+  revalidatePath("/referral-income");
   revalidatePath("/");
 }
 
@@ -135,6 +136,68 @@ export async function stopLineItem(
 export async function deleteLineItem(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("line_items").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidate();
+  return { ok: true };
+}
+
+// --- Monthly overrides -----------------------------------------------------
+// Set a custom amount for ONE month of a line item (raise, bonus, extra
+// payroll run, underpayment). Upserts on (line_item_id, month) without relying
+// on a named constraint. Inserts never send user_id (DB defaults auth.uid()).
+export async function setOverride(
+  lineItemId: string,
+  month: string, // yyyy-mm
+  amount: number
+): Promise<ActionResult> {
+  if (!/^\d{4}-\d{2}$/.test(month))
+    return { ok: false, error: "Invalid month." };
+  if (!Number.isFinite(amount))
+    return { ok: false, error: "Amount must be a number." };
+
+  const supabase = await createClient();
+  const monthDate = monthInputToDate(month);
+
+  const { data: existing, error: selErr } = await supabase
+    .from("monthly_overrides")
+    .select("id")
+    .eq("line_item_id", lineItemId)
+    .eq("month", monthDate)
+    .maybeSingle();
+  if (selErr) return { ok: false, error: selErr.message };
+
+  if (existing) {
+    const { error } = await supabase
+      .from("monthly_overrides")
+      .update({ amount })
+      .eq("id", existing.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("monthly_overrides")
+      .insert({ line_item_id: lineItemId, month: monthDate, amount, notes: null });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidate();
+  return { ok: true };
+}
+
+// Remove a month's override, reverting that month to the line item's amount.
+export async function clearOverride(
+  lineItemId: string,
+  month: string // yyyy-mm
+): Promise<ActionResult> {
+  if (!/^\d{4}-\d{2}$/.test(month))
+    return { ok: false, error: "Invalid month." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("monthly_overrides")
+    .delete()
+    .eq("line_item_id", lineItemId)
+    .eq("month", monthInputToDate(month));
   if (error) return { ok: false, error: error.message };
 
   revalidate();

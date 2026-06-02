@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { LineItem } from "@/lib/database.types";
+import type { LineItem, MonthlyOverride } from "@/lib/database.types";
 import {
   CATEGORIES_BY_KIND,
   CATEGORY_LABEL,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/format";
 import { computeStatus, type ItemStatus } from "@/lib/line-items";
 import LineItemForm from "./LineItemForm";
+import OverridesModal from "@/components/overrides/OverridesModal";
 import {
   createLineItem,
   deleteLineItem,
@@ -45,15 +46,29 @@ type FormState =
   | { mode: "add" }
   | { mode: "edit"; item: LineItem };
 
-export default function LineItemsManager({ items }: { items: LineItem[] }) {
+export default function LineItemsManager({
+  items,
+  overrides,
+}: {
+  items: LineItem[];
+  overrides: MonthlyOverride[];
+}) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({ mode: "closed" });
   const [stopFor, setStopFor] = useState<LineItem | null>(null);
   const [stopMonth, setStopMonth] = useState(currentMonth());
+  const [overridesFor, setOverridesFor] = useState<LineItem | null>(null);
   const [, startTransition] = useTransition();
 
   function refresh() {
     startTransition(() => router.refresh());
+  }
+
+  const overridesByItem = new Map<string, MonthlyOverride[]>();
+  for (const o of overrides) {
+    const list = overridesByItem.get(o.line_item_id) ?? [];
+    list.push(o);
+    overridesByItem.set(o.line_item_id, list);
   }
 
   async function handleDelete(item: LineItem) {
@@ -202,6 +217,21 @@ export default function LineItemsManager({ items }: { items: LineItem[] }) {
                                         {item.frequency === "monthly" &&
                                           status.kind !== "ended" && (
                                             <button
+                                              onClick={() =>
+                                                setOverridesFor(item)
+                                              }
+                                              className="font-medium text-slate-600 hover:text-slate-900"
+                                            >
+                                              Months
+                                              {(overridesByItem.get(item.id)
+                                                ?.length ?? 0) > 0
+                                                ? ` (${overridesByItem.get(item.id)!.length})`
+                                                : ""}
+                                            </button>
+                                          )}
+                                        {item.frequency === "monthly" &&
+                                          status.kind !== "ended" && (
+                                            <button
                                               onClick={() => {
                                                 setStopFor(item);
                                                 setStopMonth(
@@ -250,6 +280,15 @@ export default function LineItemsManager({ items }: { items: LineItem[] }) {
             if (res.ok) refresh();
             return res;
           }}
+        />
+      )}
+
+      {overridesFor && (
+        <OverridesModal
+          item={overridesFor}
+          overrides={overridesByItem.get(overridesFor.id) ?? []}
+          onClose={() => setOverridesFor(null)}
+          onChanged={refresh}
         />
       )}
 
