@@ -13,7 +13,11 @@ export type ItemCategory =
 
 export type ItemFrequency = "monthly" | "one_time";
 
-export interface LineItem {
+// NOTE: these Row shapes are `type` aliases (not interfaces) on purpose —
+// object-literal type aliases get an implicit index signature, so they satisfy
+// supabase-js's `Record<string, unknown>` schema constraint. Interfaces do not,
+// which would make every query collapse to `never`.
+export type LineItem = {
   id: string;
   user_id: string;
   name: string;
@@ -43,7 +47,7 @@ export type LineItemInput = {
   notes: string | null;
 };
 
-export interface MonthlyOverride {
+export type MonthlyOverride = {
   id: string;
   user_id: string;
   line_item_id: string;
@@ -62,7 +66,7 @@ export type MonthlyOverrideInput = {
 };
 
 // View rows ---------------------------------------------------------------
-export interface MonthlyLedgerRow {
+export type MonthlyLedgerRow = {
   month: string;
   line_item_id: string;
   name: string;
@@ -72,31 +76,42 @@ export interface MonthlyLedgerRow {
   amount: number;
 }
 
-export interface MonthlySummaryRow {
+export type MonthlySummaryRow = {
   month: string;
   income: number;
   expenses: number;
   net_profit: number;
 }
 
-// Minimal Database shape for the typed Supabase client.
-export interface Database {
+// Database shape for the typed Supabase client. The extra Relationships /
+// Functions / Enums / CompositeTypes keys are required for supabase-js's type
+// inference to resolve table types (otherwise queries degrade to `never`).
+export type Database = {
   public: {
     Tables: {
       line_items: {
         Row: LineItem;
         Insert: LineItemInput;
         Update: Partial<LineItemInput>;
+        Relationships: [];
       };
       monthly_overrides: {
         Row: MonthlyOverride;
         Insert: MonthlyOverrideInput;
         Update: Partial<MonthlyOverrideInput>;
+        Relationships: [];
       };
     };
     Views: {
-      monthly_ledger: { Row: MonthlyLedgerRow };
-      monthly_summary: { Row: MonthlySummaryRow };
+      monthly_ledger: { Row: MonthlyLedgerRow; Relationships: [] };
+      monthly_summary: { Row: MonthlySummaryRow; Relationships: [] };
     };
+    Functions: Record<string, never>;
+    Enums: {
+      item_kind: ItemKind;
+      item_category: ItemCategory;
+      item_frequency: ItemFrequency;
+    };
+    CompositeTypes: Record<string, never>;
   };
 }
