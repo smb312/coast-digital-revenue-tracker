@@ -1,52 +1,50 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import AppHeader from "@/components/AppHeader";
 
-// Step 1 landing page: confirms the app renders and the server-side Supabase
-// client is wired up. This becomes the authenticated dashboard in later steps.
+// Protected dashboard (placeholder until step 4). Middleware already redirects
+// logged-out users, but we re-check here as defense in depth and to get the
+// user record for the header.
 export default async function HomePage() {
-  // Touch the server client so we know the SSR wiring + env vars resolve.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/sign-in");
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 px-6 py-16">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-          Coast Digital
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">
-          Revenue Tracker
-        </h1>
-        <p className="mt-2 text-slate-600">
-          Monthly profit forecasting. Scaffold is live and Supabase is wired up.
-        </p>
-      </div>
+    <div className="min-h-screen">
+      <AppHeader email={user.email ?? ""} />
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">Setup status</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          <li className="flex items-center gap-2">
-            <span className="text-green-600">✓</span> Next.js + TypeScript +
-            Tailwind scaffold
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="text-green-600">✓</span> Supabase SSR clients
-            (server + browser) and middleware
-          </li>
-          <li className="flex items-center gap-2">
-            <span className={user ? "text-green-600" : "text-slate-400"}>
-              {user ? "✓" : "○"}
-            </span>
-            Auth session{" "}
-            {user ? `active (${user.email})` : "not signed in (added in step 2)"}
-          </li>
-        </ul>
-      </div>
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="mt-1 text-slate-600">
+          You&apos;re signed in. The KPI strip, forecast chart, and P&amp;L
+          table arrive in step 4.
+        </p>
 
-      <p className="text-xs text-slate-400">
-        Next up: email auth + route protection.
-      </p>
-    </main>
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-700">
+            Setup status
+          </h2>
+          <ul className="mt-3 space-y-2 text-sm">
+            <li className="flex items-center gap-2">
+              <span className="text-green-600">✓</span> Scaffold + Supabase
+              wiring
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-green-600">✓</span> Email magic-link auth +
+              route protection
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-slate-400">○</span> Line Items CRUD (next)
+            </li>
+          </ul>
+        </div>
+      </main>
+    </div>
   );
 }

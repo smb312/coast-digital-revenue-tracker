@@ -4,10 +4,19 @@ import type { Database } from "@/lib/database.types";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-// Refreshes the Supabase auth session on every request. Route protection
-// (redirecting logged-out users to /sign-in) is layered on in step 2.
-// Must return the `supabaseResponse` object so the refreshed auth cookies
-// are propagated to the browser.
+// Routes reachable without a session. Everything else redirects to /sign-in.
+const PUBLIC_PATHS = ["/sign-in", "/auth"];
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+// Refreshes the Supabase auth session on every request and guards protected
+// routes: logged-out users hitting a protected path are redirected to
+// /sign-in. Must return the `supabaseResponse` object so refreshed auth
+// cookies are propagated to the browser.
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -33,9 +42,19 @@ export async function updateSession(request: NextRequest) {
   );
 
   // IMPORTANT: do not run code between createServerClient and getUser().
-  // This refreshes the session token when needed. Route protection that
-  // uses this `user` is added in step 2.
-  await supabase.auth.getUser();
+  // This refreshes the session token when needed.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Guard protected routes: send logged-out users to sign-in, preserving
+  // where they were headed so we can bounce them back after login.
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-in";
+    url.searchParams.set("next", request.nextUrl.pathname);
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
