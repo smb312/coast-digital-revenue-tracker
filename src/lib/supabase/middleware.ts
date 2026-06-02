@@ -41,6 +41,19 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // Auth-code rescue: magic-link / signup-confirmation emails sometimes land
+  // on a path other than /auth/callback (e.g. when Supabase falls back to the
+  // Site URL root). Forward any such `?code=` to the callback handler before
+  // route protection can redirect to /sign-in and strip the code.
+  const code = request.nextUrl.searchParams.get("code");
+  if (code && request.nextUrl.pathname !== "/auth/callback") {
+    const url = request.nextUrl.clone();
+    const landedOn = request.nextUrl.pathname;
+    url.pathname = "/auth/callback";
+    url.searchParams.set("next", landedOn === "/" ? "/" : landedOn);
+    return NextResponse.redirect(url);
+  }
+
   // IMPORTANT: do not run code between createServerClient and getUser().
   // This refreshes the session token when needed.
   const {
