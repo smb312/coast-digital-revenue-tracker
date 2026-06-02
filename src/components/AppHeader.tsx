@@ -4,6 +4,7 @@ import Link from "next/link";
 // are filled in as those screens land in later steps.
 const NAV = [
   { href: "/", label: "Dashboard" },
+  { href: "/referral-income", label: "Referral Income" },
   { href: "/line-items", label: "Line Items" },
 ];
 

@@ -1,20 +1,21 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { WINDOW_OPTIONS, type WindowMonths } from "@/lib/forecast";
 
 // Segmented control to choose the forecast window. Writes ?months= to the URL
-// so the server component re-fetches the new range.
+// (on the current route) so the server component re-fetches the new range.
 export default function WindowSelector({ value }: { value: WindowMonths }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
   function select(months: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("months", String(months));
-    startTransition(() => router.push(`/?${params.toString()}`));
+    startTransition(() => router.push(`${pathname}?${params.toString()}`));
   }
 
   return (

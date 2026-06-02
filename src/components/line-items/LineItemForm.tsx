@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { ItemKind, LineItem } from "@/lib/database.types";
+import type { ItemCategory, ItemKind, LineItem } from "@/lib/database.types";
 import {
   CATEGORIES_BY_KIND,
   CATEGORY_LABEL,
   KIND_LABEL,
   KIND_ORDER,
+  kindForCategory,
 } from "@/lib/categories";
 import { dateToMonthInput } from "@/lib/format";
 import type { ActionResult } from "@/app/line-items/actions";
@@ -15,14 +16,25 @@ type Props = {
   initial?: LineItem | null;
   onSubmit: (formData: FormData) => Promise<ActionResult>;
   onClose: () => void;
+  // When set, lock the form to this category (used by the Referral tab) and
+  // hide the type/category selectors.
+  restrictToCategory?: ItemCategory;
 };
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30";
 const labelClass = "block text-sm font-medium text-slate-700";
 
-export default function LineItemForm({ initial, onSubmit, onClose }: Props) {
-  const [kind, setKind] = useState<ItemKind>(initial?.kind ?? "income");
+export default function LineItemForm({
+  initial,
+  onSubmit,
+  onClose,
+  restrictToCategory,
+}: Props) {
+  const initialKind: ItemKind = restrictToCategory
+    ? kindForCategory(restrictToCategory)
+    : (initial?.kind ?? "income");
+  const [kind, setKind] = useState<ItemKind>(initialKind);
   const [frequency, setFrequency] = useState(initial?.frequency ?? "monthly");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -75,44 +87,57 @@ export default function LineItemForm({ initial, onSubmit, onClose }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="kind" className={labelClass}>
-                Type
-              </label>
-              <select
-                id="kind"
-                name="kind"
-                value={kind}
-                onChange={(e) => setKind(e.target.value as ItemKind)}
-                className={inputClass}
-              >
-                {KIND_ORDER.map((k) => (
-                  <option key={k} value={k}>
-                    {KIND_LABEL[k]}
-                  </option>
-                ))}
-              </select>
+          {restrictToCategory ? (
+            <>
+              <input type="hidden" name="kind" value={kind} />
+              <input type="hidden" name="category" value={restrictToCategory} />
+              <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                Category:{" "}
+                <span className="font-medium text-slate-900">
+                  {CATEGORY_LABEL[restrictToCategory]}
+                </span>
+              </p>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="kind" className={labelClass}>
+                  Type
+                </label>
+                <select
+                  id="kind"
+                  name="kind"
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value as ItemKind)}
+                  className={inputClass}
+                >
+                  {KIND_ORDER.map((k) => (
+                    <option key={k} value={k}>
+                      {KIND_LABEL[k]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="category" className={labelClass}>
+                  Category
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  defaultValue={initial?.category}
+                  key={kind} // reset selection when kind changes
+                  className={inputClass}
+                >
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label htmlFor="category" className={labelClass}>
-                Category
-              </label>
-              <select
-                id="category"
-                name="category"
-                defaultValue={initial?.category}
-                key={kind} // reset selection when kind changes
-                className={inputClass}
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABEL[c]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
