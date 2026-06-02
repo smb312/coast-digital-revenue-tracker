@@ -176,7 +176,7 @@ export async function setOverride(
   } else {
     const { error } = await supabase
       .from("monthly_overrides")
-      .insert({ line_item_id: lineItemId, month: monthDate, amount, notes: null });
+      .insert({ line_item_id: lineItemId, month: monthDate, amount });
     if (error) return { ok: false, error: error.message };
   }
 

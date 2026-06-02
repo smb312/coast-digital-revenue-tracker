@@ -62,7 +62,6 @@ create table monthly_overrides (
   line_item_id  uuid not null references line_items (id) on delete cascade,
   month         date not null,            -- first day of the target month
   amount        numeric(14, 2) not null,
-  notes         text,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
   unique (line_item_id, month)

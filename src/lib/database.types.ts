@@ -53,7 +53,6 @@ export type MonthlyOverride = {
   line_item_id: string;
   month: string; // ISO date, first of month
   amount: number;
-  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,7 +61,6 @@ export type MonthlyOverrideInput = {
   line_item_id: string;
   month: string;
   amount: number;
-  notes: string | null;
 };
 
 // View rows ---------------------------------------------------------------
